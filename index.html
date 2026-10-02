@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>QuadBack – N-Back &amp; Brain Training</title>
+<meta name="theme-color" content="#0b1020">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="QuadBack">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Quad n-back working-memory trainer plus evidence-based brain training games. Works offline as an installable app.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#eef1f7; --surface:#ffffff; --surface2:#e6eaf3; --text:#0e1730; --muted:#5a6684; --border:#d5dbe9;
+  --accent:#4338ca; --accent2:#0e7490; --good:#15803d; --bad:#b91c1c; --warn:#b45309;
+  --board:#131a33; --cell:#1d2645; --ring:#4338ca;
+  color-scheme:light dark;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b1020; --surface:#141b33; --surface2:#1b2445; --text:#e9edf9; --muted:#93a0c4; --border:#26315a;
+    --accent:#818cf8; --accent2:#22d3ee; --good:#4ade80; --bad:#f87171; --warn:#fbbf24;
+    --board:#0a0f20; --cell:#182040; --ring:#818cf8;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b1020; --surface:#141b33; --surface2:#1b2445; --text:#e9edf9; --muted:#93a0c4; --border:#26315a;
+  --accent:#818cf8; --accent2:#22d3ee; --good:#4ade80; --bad:#f87171; --warn:#fbbf24;
+  --board:#0a0f20; --cell:#182040; --ring:#818cf8;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%;background:var(--bg)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+  font-family:ui-rounded,"SF Pro Rounded","Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+button{font-family:inherit;color:inherit;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+.wrap{max-width:560px;margin:0 auto;padding:10px 16px 48px}
+.top{display:flex;align-items:center;gap:8px;padding:6px 0 4px}
+.brand{flex:1;font-weight:800;font-size:22px;letter-spacing:-.03em}
+.brand b{color:var(--accent2)}
+.smallbtn{border:1.5px solid var(--border);background:var(--surface);border-radius:12px;padding:8px 12px;font-weight:700;font-size:14px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface2);padding:4px;border-radius:14px;margin:8px 0 14px}
+.tabs button{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:15px;padding:11px 8px;border-radius:11px}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(10,20,50,.18)}
+body.playing .tabs{display:none}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:16px;margin-bottom:12px}
+.card h3{font-size:17px;letter-spacing:-.01em;margin-bottom:8px}
+.muted{color:var(--muted)}
+.hint{color:var(--muted);font-size:14px;margin:6px 0 12px}
+.primary{width:100%;border:0;border-radius:14px;padding:16px;font-weight:800;font-size:17px;color:#fff;background:var(--accent);letter-spacing:-.01em}
+:root[data-theme="dark"] .primary{color:#0b1020}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .primary{color:#0b1020}}
+.primary.alt{background:var(--surface2);color:var(--text);border:1.5px solid var(--border)}
+.primary:active{transform:scale(.985)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--border)}
+.row:first-of-type{border-top:0}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.seg{display:flex;background:var(--surface2);border-radius:11px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;padding:7px 11px;border-radius:8px;font-weight:700;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(10,20,50,.2)}
+.tog{width:52px;height:30px;border-radius:99px;border:0;background:var(--surface2);position:relative;transition:background .15s}
+.tog::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--muted);transition:transform .15s,background .15s}
+.tog.on{background:var(--accent)}
+.tog.on::after{transform:translateX(22px);background:#fff}
+input[type=range]{width:100%;accent-color:var(--accent);margin:6px 0}
+
+/* level picker */
+.lvl{display:flex;align-items:center;justify-content:center;gap:22px;margin:4px 0 2px}
+.step{width:54px;height:54px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface2);font-size:26px;font-weight:700}
+.lvlnum{font-size:76px;font-weight:800;line-height:1;text-align:center;letter-spacing:-.05em;min-width:90px}
+.lvllab{text-align:center;color:var(--muted);font-size:13px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px;justify-content:center}
+.chip{padding:10px 15px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);font-weight:700;font-size:15px}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .chip.on{color:#0b1020}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .chip.on{color:#0b1020}}
+
+/* stats */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.tile{background:var(--surface2);border-radius:14px;padding:10px 8px;text-align:center}
+.tile b{display:block;font-size:24px;letter-spacing:-.03em}
+.tile span{font-size:12px;color:var(--muted);font-weight:600}
+.hist{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--border);font-size:14px}
+.hist .d{width:56px;color:var(--muted)}
+.hist .n{width:46px;font-weight:800}
+.hist .bar{flex:1;height:8px;background:var(--surface2);border-radius:9px;overflow:hidden}
+.hist .bar i{display:block;height:100%;background:var(--accent2)}
+.hist .p{width:40px;text-align:right;font-weight:700}
+details.card summary{font-weight:700;cursor:pointer}
+details.card ul,.lines{margin:10px 0 0;padding-left:20px;color:var(--muted);font-size:14.5px}
+details.card li,.lines li{margin-bottom:6px}
+
+/* play */
+.hud{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0}
+.hud .hudmid{font-weight:700;text-align:center;flex:1;font-size:15px}
+.ghost{border:1.5px solid var(--border);background:var(--surface);border-radius:11px;padding:8px 12px;font-weight:700;font-size:14px}
+.prog,.gprog{height:6px;background:var(--surface2);border-radius:9px;overflow:hidden;margin:6px 0}
+.prog i,.gprog i{display:block;height:100%;width:0;background:var(--accent2);transition:width .25s}
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--board);padding:8px;border-radius:22px;width:min(100%,350px);aspect-ratio:1;margin:12px auto}
+.cell{background:var(--cell);border-radius:15px;display:grid;place-items:center;color:#56628c;font-size:28px;font-weight:300}
+.cell svg{width:76%;height:76%;display:block}
+.resp{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:6px}
+.resp.n1{grid-template-columns:1fr}
+.resp.n3{grid-template-columns:repeat(3,1fr)}
+.rbtn{height:72px;border-radius:16px;border:2px solid var(--border);background:var(--surface);font-weight:800;font-size:17px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:background .08s,border-color .08s,transform .08s}
+.rbtn kbd{font:600 11px ui-monospace,monospace;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:0 6px}
+.rbtn.pressed{transform:scale(.96);border-color:var(--accent)}
+.rbtn.good{background:var(--good);border-color:var(--good);color:#fff}
+.rbtn.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.rbtn.miss{border-color:var(--warn);box-shadow:0 0 0 3px var(--warn) inset}
+.rbtn.good kbd,.rbtn.bad kbd{color:#fff;border-color:rgba(255,255,255,.6)}
+.ready{position:absolute;inset:0;display:grid;place-items:center;font-weight:800;font-size:22px;color:#fff;background:rgba(10,15,32,.7);border-radius:22px}
+.boardwrap{position:relative;width:min(100%,350px);margin:12px auto}
+.boardwrap .board{margin:0;width:100%}
+
+/* results */
+.res{text-align:center}
+.res .big{font-size:72px;font-weight:800;letter-spacing:-.05em;line-height:1.05}
+.big.g{color:var(--good)} .big.w{color:var(--warn)} .big.b{color:var(--bad)}
+.verdict{margin:8px 0 14px;font-weight:700}
+.modres{text-align:left;margin:6px 0}
+.modrow{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--border);font-size:15px}
+.modrow small{color:var(--muted);display:block;font-size:12.5px}
+.modrow b{font-size:20px}
+
+/* train tab */
+.note{border-left:4px solid var(--accent2)}
+.note p{color:var(--muted);font-size:14.5px;margin-top:6px}
+.gcard{display:flex;gap:14px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:14px;margin-bottom:10px}
+.gcard:active{transform:scale(.99)}
+.gic{font-size:30px;width:48px;height:48px;flex:none;display:grid;place-items:center;background:var(--surface2);border-radius:14px}
+.gname{font-weight:800;font-size:17px;letter-spacing:-.01em}
+.gdesc{color:var(--muted);font-size:14px;margin:2px 0 8px}
+.gmeta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;color:var(--muted);font-weight:600}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:800;border:1px solid var(--border);background:var(--surface2);color:var(--muted)}
+.pill.ev-best{background:var(--good);border-color:var(--good);color:#fff}
+.pill.ev-mod{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .pill.ev-best,:root[data-theme="dark"] .pill.ev-mod{color:#0b1020}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pill.ev-best,:root:not([data-theme="light"]) .pill.ev-mod{color:#0b1020}}
+.pill.today{border-color:var(--accent2);color:var(--accent2);background:transparent}
+.stimbox{background:var(--board);border-radius:20px;height:190px;display:grid;place-items:center;margin:10px 0;border:3px solid transparent;transition:border-color .1s}
+.stimbox.ok{border-color:var(--good)} .stimbox.no{border-color:var(--bad)}
+.bigword{font-size:52px;font-weight:800;letter-spacing:.02em;color:#fff}
+.grid4{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.colbtn{height:70px;border-radius:16px;border:3px solid rgba(255,255,255,.25)}
+.colbtn:active{transform:scale(.96)}
+.opt{height:64px;border-radius:16px;border:2px solid var(--border);background:var(--surface);font-weight:800;font-size:18px}
+.opt:active{transform:scale(.97);border-color:var(--accent)}
+.frame{border:6px solid var(--muted);border-radius:22px;transition:border-color .05s}
+.cue{text-align:center;font-weight:800;margin-bottom:6px;font-size:15px}
+.intro h3{font-size:22px;letter-spacing:-.02em;margin-bottom:8px}
+.intro p{color:var(--muted);margin-bottom:16px}
+.field{position:relative;width:min(100%,340px);aspect-ratio:1;margin:10px auto;background:var(--board);border-radius:22px}
+.slot{position:absolute;width:15%;aspect-ratio:1;transform:translate(-50%,-50%);display:grid;place-items:center;color:#fff;font-size:clamp(20px,7vw,32px);border-radius:50%}
+.slot.center{font-size:clamp(28px,10vw,44px);width:22%}
+.slot.tap{border:2px dashed #8b97c2;cursor:pointer;background:rgba(255,255,255,.06)}
+.qa{min-height:76px;text-align:center}
+.qa .row2{margin-top:0}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.key{height:58px;border-radius:14px;border:2px solid var(--border);background:var(--surface);font-weight:800;font-size:22px}
+.key:active{transform:scale(.95)}
+.blocks{position:relative;width:min(100%,340px);aspect-ratio:1;margin:10px auto;background:var(--board);border-radius:22px}
+.blk{position:absolute;width:19%;aspect-ratio:1;border-radius:14px;background:#2f3b6d;border:0;transition:background .08s,transform .08s}
+.blk.lit{background:#22d3ee;transform:scale(1.06)}
+.blk.bad{background:var(--bad)}
+.tapbox{cursor:pointer}
+.circle{width:120px;height:120px;border-radius:50%}
+.msg{text-align:center;font-weight:700;min-height:28px;margin:6px 0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Quad<b>Back</b></div>
+    <button class="smallbtn" id="installBtn" hidden>Install</button>
+    <button class="smallbtn" id="themeBtn" aria-label="Toggle light or dark theme">Theme</button>
+  </header>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="nback" aria-selected="true">Quad N-Back</button>
+    <button role="tab" data-tab="train" aria-selected="false">Brain Training</button>
+  </nav>
+  <main id="app"></main>
+</div>
+
+<script>
+'use strict';
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const rnd=n=>Math.floor(Math.random()*n);
+const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+const app=$('#app');
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+
+/* ---------- theme ---------- */
+(function(){
+  const t=store.get('theme',null); if(t)document.documentElement.dataset.theme=t;
+  $('#themeBtn').onclick=()=>{
+    const cur=document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+    const nx=cur==='dark'?'light':'dark'; document.documentElement.dataset.theme=nx; store.set('theme',nx);
+  };
+})();
+
+/* ---------- audio ---------- */
+let actx=null;
+function audio(){
+  if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
+  if(actx&&actx.state==='suspended')actx.resume();
+  return actx;
+}
+function tone(f,dur=.36,vol=.28){
+  const a=audio(); if(!a)return;
+  const o=a.createOscillator(),g=a.createGain(),t=a.currentTime;
+  o.type='triangle'; o.frequency.value=f;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+.02); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t+dur+.03);
+}
+function speak(txt){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);u.rate=1.15;speechSynthesis.speak(u)}catch(e){}}
+
+/* ---------- QUAD N-BACK ---------- */
+const MODS=[
+  {id:'pos',label:'Position',key:'A'},
+  {id:'col',label:'Color',key:'S'},
+  {id:'shp',label:'Shape',key:'D'},
+  {id:'snd',label:'Sound',key:'F'}
+];
+const COLORS=['#f59e0b','#38bdf8','#22c55e','#facc15','#3b6ff0','#ef4444','#f472b6','#a78bfa'];
+const SHAPES=[
+  '<circle cx="50" cy="50" r="38"/>',
+  '<rect x="14" y="14" width="72" height="72" rx="8"/>',
+  '<polygon points="50,10 92,86 8,86"/>',
+  '<polygon points="50,6 94,50 50,94 6,50"/>',
+  '<polygon points="50,8 92,39 76,90 24,90 8,39"/>',
+  '<polygon points="50,6 61,38 95,38 68,58 78,92 50,71 22,92 32,58 5,38 39,38"/>',
+  '<polygon points="36,8 64,8 64,36 92,36 92,64 64,64 64,92 36,92 36,64 8,64 8,36 36,36"/>',
+  '<polygon points="50,6 88,28 88,72 50,94 12,72 12,28"/>'
+];
+const POSMAP=[0,1,2,3,5,6,7,8];
+const TONES=[262,294,330,392,440,523,587,659];
+const LETTERS=['C','H','K','L','Q','R','S','T'];
+
+const S=Object.assign({n:1,mods:[1,1,1,1],interval:3000,base:20,snd:'tones',auto:true,feedback:true,history:[]},store.get('qnb.v1',{}));
+const saveNB=()=>{S.history=S.history.slice(-60);store.set('qnb.v1',S)};
+let run=null;
+let tab='nback';
+
+function abortRun(){
+  if(run){run.timers.forEach(clearTimeout);run.ended=true;run=null}
+  document.body.classList.remove('playing');
+  try{speechSynthesis.cancel()}catch(e){}
+}
+
+function renderNbHome(){
+  abortRun();
+  const h=S.history,cnt=h.length;
+  const best=cnt?Math.max(...h.map(x=>x.n)):0;
+  const avg=cnt?Math.round(mean(h.slice(-5).map(x=>x.acc))):0;
+  const speechOK='speechSynthesis' in window;
+  const rows=h.slice(-8).reverse().map(x=>{
+    const d=new Date(x.t);
+    return `<div class="hist"><span class="d">${d.getMonth()+1}/${d.getDate()}</span><span class="n">N=${x.n}</span><span class="bar"><i style="width:${x.acc}%"></i></span><span class="p">${x.acc}%</span></div>`;
+  }).join('');
+  app.innerHTML=`
+  <section class="card">
+    <div class="lvl">
+      <button class="step" data-act="n-" aria-label="Lower N">−</button>
+      <div><div class="lvlnum">${S.n}</div><div class="lvllab">N-back level</div></div>
+      <button class="step" data-act="n+" aria-label="Raise N">+</button>
+    </div>
+    <p class="hint" style="text-align:center">Tap a button when the item matches the one from <b>${S.n}</b> step${S.n>1?'s':''} back.</p>
+    <div class="chips">${MODS.map((m,i)=>`<button class="chip ${S.mods[i]?'on':''}" data-act="mod" data-i="${i}">${m.label}</button>`).join('')}</div>
+    <button class="primary" data-act="start">Start session</button>
+  </section>
+  <section class="card">
+    <h3>Progress</h3>
+    ${cnt?`<div class="tiles"><div class="tile"><b>${cnt}</b><span>sessions</span></div><div class="tile"><b>${best}</b><span>highest N</span></div><div class="tile"><b>${avg}%</b><span>last 5 avg</span></div></div>${rows}`:`<p class="muted">Your sessions will show up here. Aim for 15–20 minutes, 4–5 days a week.</p>`}
+  </section>
+  <section class="card">
+    <h3>Settings</h3>
+    <div class="row" style="display:block;border:0"><span>Speed: <b id="ivl">${(S.interval/1000).toFixed(2).replace(/0$/,'')}s</b> per trial</span>
+      <input type="range" id="rng" min="1500" max="4500" step="250" value="${S.interval}" aria-label="Seconds per trial"></div>
+    <div class="row"><span>Session length</span><div class="seg">${[20,30,40].map(v=>`<button class="${S.base===v?'on':''}" data-act="base" data-v="${v}">${v}+N</button>`).join('')}</div></div>
+    <div class="row"><span>Sound</span><div class="seg"><button class="${S.snd==='tones'?'on':''}" data-act="snd" data-v="tones">Tones</button>${speechOK?`<button class="${S.snd==='letters'?'on':''}" data-act="snd" data-v="letters">Letters</button>`:''}</div></div>
+    <div class="row"><span>Auto-adjust N</span><button class="tog ${S.auto?'on':''}" data-act="auto" aria-label="Auto adjust N"></button></div>
+    <div class="row"><span>Instant feedback</span><button class="tog ${S.feedback?'on':''}" data-act="fb" aria-label="Instant feedback"></button></div>
+  </section>
+  <details class="card">
+    <summary>How quad n-back works</summary>
+    <ul>
+      <li>Each trial shows a coloured shape in one of eight squares, together with a sound.</li>
+      <li>Four buttons track four things: <b>position, colour, shape, sound</b>. Tap one whenever that feature is the same as it was <b>N trials ago</b>. More than one can match at once.</li>
+      <li>Don't tap when nothing matches. Wrong taps count against you.</li>
+      <li>Score per feature = hits ÷ (hits + misses + false alarms). Finish at 80%+ and N goes up; below 50% it goes down.</li>
+      <li>Too hard? Switch off some features (start with position + sound) and build up.</li>
+      <li>Keyboard: A, S, D, F (or 1–4).</li>
+    </ul>
+  </details>
+  <details class="card">
+    <summary>What the research says</summary>
+    <ul>
+      <li>N-back training reliably improves n-back and closely related working-memory tasks.</li>
+      <li>Transfer to general intelligence is small and disputed across meta-analyses, so treat it as a workout for attention and working memory, not a guaranteed IQ boost.</li>
+      <li>Consistency beats marathon sessions. Sleep, exercise and real-world learning matter at least as much.</li>
+    </ul>
+  </details>`;
+}
+
+function genSeq(total,n,active){
+  const seq=[];
+  const matchIdx={};
+  MODS.forEach((m,mi)=>{
+    if(!active[mi])return;
+    const pool=[];for(let i=n;i<total;i++)pool.push(i);
+    const k=Math.max(3,Math.round((total-n)*.25));
+    matchIdx[m.id]=new Set(shuffle(pool).slice(0,k));
+  });
+  for(let i=0;i<total;i++){
+    const st={};
+    MODS.forEach((m,mi)=>{
+      if(!active[mi]){st[m.id]=0;return}
+      let v;
+      if(i>=n){
+        const prev=seq[i-n][m.id];
+        if(matchIdx[m.id].has(i))v=prev; else{do{v=rnd(8)}while(v===prev)}
+      }else v=rnd(8);
+      st[m.id]=v;
+    });
+    seq.push(st);
+  }
+  return seq;
+}
+
+function startRun(){
+  abortRun();
+  audio();
+  const n=S.n,total=S.base+n;
+  run={n,total,seq:genSeq(total,n,S.mods),i:-1,pressed:{},timers:[],ended:false,
+    stats:Object.fromEntries(MODS.map(m=>[m.id,{h:0,m:0,fa:0,cr:0}]))};
+  document.body.classList.add('playing');
+  const act=MODS.map((m,i)=>S.mods[i]?i:-1).filter(i=>i>=0);
+  const cls=act.length===1?'n1':act.length===3?'n3':'';
+  app.innerHTML=`
+  <div class="hud"><button class="ghost" data-act="quit">✕ Quit</button><div class="hudmid"><b>N=${n}</b> · <span id="tcount">Get ready</span></div><span style="width:70px"></span></div>
+  <div class="prog"><i id="prog"></i></div>
+  <div class="boardwrap"><div class="board" id="board">${[0,1,2,3,4,5,6,7,8].map(c=>`<div class="cell" data-c="${c}">${c===4?'+':''}</div>`).join('')}</div><div class="ready" id="ready">Get ready…</div></div>
+  <div class="resp ${cls}">${act.map(i=>`<button class="rbtn" data-m="${i}"><span>${MODS[i].label}</span><kbd>${MODS[i].key}</kbd></button>`).join('')}</div>`;
+  const r=run;
+  r.timers.push(setTimeout(()=>{const el=$('#ready');if(el)el.remove();showTrial(0)},1600));
+}
+
+function clearStim(){$$('.cell').forEach(c=>{c.innerHTML=c.dataset.c==='4'?'+':''})}
+function drawStim(st){
+  clearStim();
+  const ci=S.mods[0]?POSMAP[st.pos]:4;
+  const col=S.mods[1]?COLORS[st.col]:COLORS[1];
+  const shp=S.mods[2]?SHAPES[st.shp]:SHAPES[0];
+  const cell=$(`.cell[data-c="${ci}"]`);
+  if(cell)cell.innerHTML=`<svg viewBox="0 0 100 100" fill="${col}">${shp}</svg>`;
+}
+function playSnd(v){
+  if(S.snd==='letters'&&'speechSynthesis' in window)speak(LETTERS[v]); else tone(TONES[v]);
+}
+function flash(btn,cls,ms=380){
+  if(!btn)return; btn.classList.add(cls); setTimeout(()=>btn.classList.remove(cls),ms);
+}
+function showTrial(i){
+  if(!run||run.ended)return;
+  const r=run;
+  r.i=i; r.pressed={};
+  const st=r.seq[i];
+  drawStim(st);
+  const tc=$('#tcount'); if(tc)tc.textContent=`Trial ${i+1} / ${r.total}`;
+  const pg=$('#prog'); if(pg)pg.style.width=(i/r.total*100)+'%';
+  if(S.mods[3])playSnd(st.snd);
+  r.timers.push(setTimeout(clearStim,Math.min(1000,S.interval*.4)));
+  r.timers.push(setTimeout(()=>{
+    if(run!==r||r.ended)return;
+    endTrial(i);
+    if(i+1<r.total)showTrial(i+1); else finishRun();
+  },S.interval));
+}
+function endTrial(i){
+  const r=run;
+  if(i<r.n)return;
+  MODS.forEach((m,mi)=>{
+    if(!S.mods[mi])return;
+    const match=r.seq[i][m.id]===r.seq[i-r.n][m.id];
+    const pr=!!r.pressed[mi];
+    const s=r.stats[m.id];
+    if(match&&pr)s.h++; else if(match&&!pr){s.m++; if(S.feedback)flash($(`.rbtn[data-m="${mi}"]`),'miss',700)}
+    else if(!match&&pr)s.fa++; else s.cr++;
+  });
+}
+function press(mi){
+  if(!run||run.ended||!S.mods[mi]||run.i<0||run.pressed[mi])return;
+  run.pressed[mi]=true;
+  const btn=$(`.rbtn[data-m="${mi}"]`);
+  const i=run.i;
+  if(i<run.n||!S.feedback){flash(btn,'pressed',160);return}
+  const id=MODS[mi].id;
+  const match=run.seq[i][id]===run.seq[i-run.n][id];
+  flash(btn,match?'good':'bad');
+}
+
+function finishRun(){
+  const r=run; r.ended=true; r.timers.forEach(clearTimeout);
+  document.body.classList.remove('playing');
+  let H=0,M=0,F=0; const per=[];
+  MODS.forEach((m,mi)=>{
+    if(!S.mods[mi])return;
+    const s=r.stats[m.id]; const d=s.h+s.m+s.fa;
+    const acc=d?Math.round(100*s.h/d):100;
+    per.push({id:m.id,label:m.label,acc,h:s.h,m:s.m,fa:s.fa});
+    H+=s.h;M+=s.m;F+=s.fa;
+  });
+  const d=H+M+F; const overall=d?Math.round(100*H/d):100;
+  let msg='Holding steady at this level.',newN=r.n;
+  if(overall>=80){msg=S.auto?`Nice work. Moving up to N=${Math.min(9,r.n+1)}.`:'Strong session. Ready for a higher N.';if(S.auto)newN=Math.min(9,r.n+1)}
+  else if(overall<50){msg=S.auto?`Tough one. Dropping to N=${Math.max(1,r.n-1)} to rebuild.`:'Tough one. Try a lower N.';if(S.auto)newN=Math.max(1,r.n-1)}
+  else msg=`${80-overall} points short of levelling up. Stay at N=${r.n}.`;
+  S.history.push({t:Date.now(),n:r.n,acc:overall,mods:S.mods.slice(),per});
+  S.n=newN; saveNB(); run=null;
+  const cls=overall>=80?'g':overall>=50?'w':'b';
+  app.innerHTML=`
+  <section class="card res">
+    <div class="muted" style="font-weight:700">N=${r.n} session</div>
+    <div class="big ${cls}">${overall}%</div>
+    <p class="verdict">${msg}</p>
+    <div class="modres">${per.map(p=>`<div class="modrow"><div>${p.label}<small>${p.h} hits · ${p.m} missed · ${p.fa} false</small></div><b>${p.acc}%</b></div>`).join('')}</div>
+    <div class="row2"><button class="primary" data-act="start">Play again</button><button class="primary alt" data-act="home">Done</button></div>
+  </section>`;
+}
+
+document.addEventListener('keydown',e=>{
+  if(!run||e.repeat)return;
+  const k=e.key.toLowerCase();
+  const map={a:0,s:1,d:2,f:3,'1':0,'2':1,'3':2,'4':3};
+  if(k in map){e.preventDefault();press(map[k])}
+});
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden&&run&&!run.ended){renderNbHome()}
+});
+
+/* ---------- BRAIN TRAINING ---------- */
+const BT=store.get('bt.v1',{});
+function recordBest(id,val,dir){
+  const r=BT[id]||{plays:0}; r.plays++; r.last=val;
+  let nb=false;
+  if(r.best==null||(dir==='high'?val>r.best:val<r.best)){r.best=val;nb=true}
+  BT[id]=r; store.set('bt.v1',BT); return nb;
+}
+const GAMES=[
+  {id:'speed',name:'Speed of Processing',icon:'👁️',ev:'best',evt:'Best evidence',desc:'Flash a centre target and spot where a star appeared. Gets faster as you improve.',dir:'low',fmt:v=>v+' ms'},
+  {id:'switch',name:'Task Switching',icon:'🔀',ev:'mod',evt:'Moderate evidence',desc:'Alternate between odd/even and low/high rules on the fly.',dir:'low',fmt:v=>v+' ms'},
+  {id:'digits',name:'Digit Span',icon:'🔢',ev:'mod',evt:'Moderate evidence',desc:'Remember digit strings, forward or backward.',dir:'high',fmt:v=>v+' digits'},
+  {id:'corsi',name:'Corsi Blocks',icon:'🟦',ev:'mod',evt:'Moderate evidence',desc:'Repeat a tapped sequence of blocks. Trains visuospatial memory.',dir:'high',fmt:v=>v+' blocks'},
+  {id:'stroop',name:'Stroop',icon:'🎨',ev:'lim',evt:'Limited evidence',desc:'Name the ink colour, ignore the word. Trains interference control.',dir:'low',fmt:v=>v+' ms'},
+  {id:'gonogo',name:'Go / No-Go',icon:'🚦',ev:'lim',evt:'Limited evidence',desc:'Tap green, hold back on red. Trains response inhibition.',dir:'low',fmt:v=>v+' ms'}
+];
+function bestLine(g){
+  if(g.id==='digits'){
+    const f=BT['digits-f'],b=BT['digits-b'];
+    if(!f&&!b)return 'Not played yet';
+    return `Best: ${f?'fwd '+f.best:''}${f&&b?' · ':''}${b?'back '+b.best:''}`;
+  }
+  const r=BT[g.id]; return r?`Best: ${g.fmt(r.best)}`:'Not played yet';
+}
+
+function renderTrain(){
+  token++; abortRun(); document.body.classList.remove('playing');
+  const today=GAMES[Math.floor(Date.now()/864e5)%GAMES.length].id;
+  app.innerHTML=`
+  <section class="card note">
+    <b>Pick tools with real evidence</b>
+    <p>Practice reliably improves the exact tasks you train. Wider benefits are smaller and debated. The strongest long-term evidence is for speed-of-processing training in older adults (the ACTIVE trial). Exercise, sleep and learning new skills help as much as any game.</p>
+  </section>
+  ${GAMES.map(g=>`<button class="gcard" data-act="play" data-g="${g.id}">
+    <div class="gic">${g.icon}</div>
+    <div><div class="gname">${g.name} ${g.id===today?'<span class="pill today">Today\'s pick</span>':''}</div>
+    <div class="gdesc">${g.desc}</div>
+    <div class="gmeta"><span class="pill ev-${g.ev}">${g.evt}</span><span>${bestLine(g)}</span></div></div></button>`).join('')}
+  <details class="card">
+    <summary>Habits with the best evidence</summary>
+    <ul>
+      <li><b>Aerobic exercise</b>: about 150 minutes a week of brisk activity is the most consistently supported cognitive booster.</li>
+      <li><b>Sleep</b>: 7–9 hours. Memory consolidation happens overnight.</li>
+      <li><b>Retrieval practice and spaced repetition</b>: test yourself on what you're learning at growing intervals.</li>
+      <li><b>Learn something hard and new</b>: a language, instrument or skill that keeps you at the edge of your ability.</li>
+      <li><b>Social contact and mindfulness</b>: linked with better attention and lower decline risk.</li>
+    </ul>
+  </details>
+  <details class="card">
+    <summary>Suggested 15-minute routine</summary>
+    <ul>
+      <li>10 minutes of Quad N-Back (about 3 sessions).</li>
+      <li>5 minutes on today's pick.</li>
+      <li>4–5 days a week for at least a month. Raise difficulty only when it feels comfortable.</li>
+    </ul>
+  </details>`;
+}
+
+let token=0, curGame=null;
+class Abort extends Error{}
+const wait=(ms,tk)=>new Promise((res,rej)=>setTimeout(()=>tk===token?res():rej(new Abort()),ms));
+function pick(root,sel){
+  return new Promise(res=>{
+    const h=e=>{const b=e.target.closest(sel);if(!b||!root.contains(b))return;root.removeEventListener('pointerdown',h);res(b)};
+    root.addEventListener('pointerdown',h);
+  });
+}
+function frames(ms){
+  return new Promise(res=>{const t0=performance.now();const tick=()=>{if(performance.now()-t0>=ms)res();else requestAnimationFrame(tick)};requestAnimationFrame(tick)});
+}
+function intro(el,html){
+  el.innerHTML=`<div class="intro">${html}<button class="primary" id="go">Start</button></div>`;
+  return new Promise(r=>{$('#go',el).onclick=r});
+}
+function fb(ok){
+  const b=$('.stimbox');if(!b)return;
+  b.classList.add(ok?'ok':'no');setTimeout(()=>b.classList.remove('ok','no'),200);
+}
+
+function startGame(id){
+  token++; const tk=token; curGame=GAMES.find(g=>g.id===id);
+  document.body.classList.add('playing');
+  app.innerHTML=`<div class="hud"><button class="ghost" data-act="gquit">✕ Quit</button><div class="hudmid">${curGame.name}</div><span style="width:70px"></span></div><div id="gbody"></div>`;
+  const fn={stroop:gStroop,switch:gSwitch,speed:gSpeed,digits:gDigits,corsi:gCorsi,gonogo:gGoNoGo}[id];
+  fn($('#gbody'),tk).catch(e=>{if(!(e instanceof Abort))console.error(e)});
+}
+function gameResult(tk,o){
+  if(tk!==token)return;
+  const g=curGame; let nb=false;
+  if(o.value!=null)nb=recordBest(o.recId||g.id,o.value,g.id==='digits'||g.id==='corsi'?'high':'low');
+  $('#gbody').innerHTML=`<section class="card res">
+    <div class="big">${o.big}</div><div class="muted" style="font-weight:700">${o.unit}</div>
+    ${nb?'<p class="verdict" style="color:var(--good)">New personal best</p>':(o.value==null&&o.note?`<p class="verdict" style="color:var(--warn)">${o.note}</p>`:'<p class="verdict"> </p>')}
+    <ul class="lines" style="text-align:left">${o.lines.map(l=>`<li>${l}</li>`).join('')}</ul>
+    <div class="row2"><button class="primary" data-act="gagain">Play again</button><button class="primary alt" data-act="gquit">Back</button></div>
+  </section>`;
+}
+
+/* --- Stroop --- */
+async function gStroop(el,tk){
+  await intro(el,`<h3>Stroop</h3><p>Tap the <b>ink colour</b> of each word. Ignore what the word says. 32 words. Fast and accurate.</p>`);
+  const C=[['RED','#ef4444'],['BLUE','#3b82f6'],['GREEN','#22c55e'],['YELLOW','#facc15']];
+  el.innerHTML=`<div class="gprog"><i id="gp"></i></div><div class="stimbox"><div id="word" class="bigword"></div></div><div class="grid4">${C.map((c,i)=>`<button class="colbtn" data-i="${i}" style="background:${c[1]}" aria-label="${c[0]}"></button>`).join('')}</div>`;
+  const N=32,res=[],w=$('#word',el);
+  for(let t=0;t<N;t++){
+    const wi=rnd(4),cong=Math.random()<.5;
+    const ink=cong?wi:(wi+1+rnd(3))%4;
+    w.textContent=C[wi][0];w.style.color=C[ink][1];
+    $('#gp',el).style.width=(t/N*100)+'%';
+    const t0=performance.now();
+    const b=await pick(el,'.colbtn');
+    const rt=performance.now()-t0,ok=+b.dataset.i===ink;
+    res.push({ok,rt,cong});fb(ok);w.textContent='';
+    await wait(260,tk);
+  }
+  const acc=Math.round(100*res.filter(r=>r.ok).length/N);
+  const rts=(c)=>Math.round(mean(res.filter(r=>r.ok&&r.cong===c).map(r=>r.rt)));
+  const con=rts(true),inc=rts(false),all=Math.round(mean(res.filter(r=>r.ok).map(r=>r.rt)));
+  gameResult(tk,{big:all+' ms',unit:'average time per correct answer',value:acc>=85?all:null,note:'Score needs 85%+ accuracy to count for your best.',
+    lines:[`Accuracy: ${acc}%`,`Matching words: ${con} ms`,`Conflicting words: ${inc} ms`,`Stroop effect: ${inc-con} ms (smaller means better control)`]});
+}
+
+/* --- Task switching --- */
+async function gSwitch(el,tk){
+  await intro(el,`<h3>Task Switching</h3><p>The frame colour tells you the rule.<br><b style="color:#0ea5e9">Blue</b>: is the number odd or even?<br><b style="color:#f97316">Orange</b>: is it below 5 or above 5?<br>40 trials.</p>`);
+  el.innerHTML=`<div class="gprog"><i id="gp"></i></div><div class="cue" id="cue"> </div><div class="stimbox frame" id="fr"><div class="bigword" id="num"></div></div><div class="grid4"><button class="opt" data-i="0" id="o0"></button><button class="opt" data-i="1" id="o1"></button></div>`;
+  const N=40,res=[];let prev=null;
+  const nums=[1,2,3,4,6,7,8,9];
+  for(let t=0;t<N;t++){
+    let task=t===0?rnd(2):(Math.random()<.5?1-prev:prev);
+    const n=nums[rnd(nums.length)];
+    const fr=$('#fr',el);
+    fr.style.borderColor=task===0?'#0ea5e9':'#f97316';
+    $('#cue',el).textContent=task===0?'Odd or even?':'Below or above 5?';
+    $('#o0',el).textContent=task===0?'Odd':'Below 5';
+    $('#o1',el).textContent=task===0?'Even':'Above 5';
+    $('#num',el).textContent=n;
+    $('#gp',el).style.width=(t/N*100)+'%';
+    const correct=task===0?(n%2?0:1):(n<5?0:1);
+    const t0=performance.now();
+    const b=await pick(el,'.opt');
+    const rt=performance.now()-t0,ok=+b.dataset.i===correct;
+    res.push({ok,rt,sw:prev!==null&&prev!==task});fb(ok);
+    $('#num',el).textContent='';prev=task;
+    await wait(250,tk);
+  }
+  const acc=Math.round(100*res.filter(r=>r.ok).length/N);
+  const m=f=>Math.round(mean(res.filter(r=>r.ok&&f(r)).map(r=>r.rt)));
+  const rep=m(r=>!r.sw),sw=m(r=>r.sw),all=m(()=>true);
+  gameResult(tk,{big:all+' ms',unit:'average time per correct answer',value:acc>=85?all:null,note:'Score needs 85%+ accuracy to count for your best.',
+    lines:[`Accuracy: ${acc}%`,`Same rule as last trial: ${rep} ms`,`Rule switched: ${sw} ms`,`Switch cost: ${sw-rep} ms (smaller is better)`]});
+}
+
+/* --- Speed of processing --- */
+async function gSpeed(el,tk){
+  await intro(el,`<h3>Speed of Processing</h3><p>Stare at the centre. For a split second a <b>car or truck</b> shows in the middle and a <b>star</b> appears somewhere on the outer ring among triangles. Then answer both questions. The flash gets shorter when you're right and longer when you're wrong.</p>`);
+  const slots=[];
+  for(let i=0;i<8;i++){const a=(i*45-90)*Math.PI/180;slots.push(`<div class="slot" data-i="${i}" style="left:${50+38*Math.cos(a)}%;top:${50+38*Math.sin(a)}%"></div>`)}
+  el.innerHTML=`<div class="gprog"><i id="gp"></i></div><div class="field" id="field"><div class="slot center" id="ctr">+</div>${slots.join('')}</div><div class="qa" id="qa"></div>`;
+  const field=$('#field',el),ctr=$('#ctr',el),ring=$$('.slot[data-i]',el),qa=$('#qa',el);
+  const setRing=f=>ring.forEach((s,i)=>{s.textContent=f(i);s.classList.remove('tap')});
+  const TR=24;let dur=250,streak=0;const log=[];
+  for(let t=0;t<TR;t++){
+    $('#gp',el).style.width=(t/TR*100)+'%';
+    const truck=Math.random()<.5,tgt=rnd(8);
+    qa.innerHTML='';ctr.textContent='+';setRing(()=>'');
+    await wait(700,tk);
+    ctr.textContent=truck?'🚚':'🚗';setRing(i=>i===tgt?'⭐':'▲');
+    await frames(dur);
+    ctr.textContent='▓';setRing(()=>'▓');
+    await wait(250,tk);
+    ctr.textContent='?';setRing(()=>'');
+    qa.innerHTML=`<div class="msg">What was in the centre?</div><div class="row2"><button class="opt" data-i="0">🚗 Car</button><button class="opt" data-i="1">🚚 Truck</button></div>`;
+    const a1=await pick(qa,'.opt');
+    const ok1=(+a1.dataset.i===1)===truck;
+    qa.innerHTML=`<div class="msg">Tap where the ⭐ was</div>`;
+    ring.forEach(s=>{s.classList.add('tap');s.textContent=''});
+    const a2=await pick(field,'.slot.tap');
+    const ok2=+a2.dataset.i===tgt;
+    const ok=ok1&&ok2;
+    log.push(dur);ring.forEach(s=>s.classList.remove('tap'));
+    qa.innerHTML=`<div class="msg" style="color:var(--${ok?'good':'bad'})">${ok?'Correct':(ok1?'Star was elsewhere':'Missed the centre')}</div>`;
+    if(ok){streak++;if(streak>=2){dur=Math.max(17,Math.round(dur*.8));streak=0}}else{streak=0;dur=Math.min(500,Math.round(dur*1.25))}
+    await wait(600,tk);
+  }
+  const last=log.slice(-10);
+  const thr=Math.round(Math.exp(mean(last.map(Math.log))));
+  gameResult(tk,{big:thr+' ms',unit:'display time you can handle',value:thr,
+    lines:['Lower is better: it is how briefly you can see and still answer correctly.','Repeat regularly. Speed training pays off with steady practice over weeks.','Screens refresh at about 60 Hz, so the shortest flashes are 1–2 frames.']});
+}
+
+/* --- Digit span --- */
+async function gDigits(el,tk){
+  el.innerHTML=`<div class="intro"><h3>Digit Span</h3><p>Watch the digits one at a time, then type them back. Backward means reversed order, which taxes working memory more.</p><div class="row2"><button class="primary" data-m="f">Forward</button><button class="primary alt" data-m="b">Backward</button></div></div>`;
+  const mode=await pick(el,'[data-m]').then(b=>b.dataset.m);
+  let len=3,fails=0,best=0;
+  while(true){
+    const d=[];for(let i=0;i<len;i++){let x;do{x=rnd(10)}while(i&&x===d[i-1]);d.push(x)}
+    el.innerHTML=`<div class="stimbox"><div id="dg" class="bigword"> </div></div><div class="msg" id="dm">${mode==='f'?'Forward':'Backward'} · ${len} digits</div>`;
+    await wait(700,tk);
+    for(const x of d){$('#dg',el).textContent=x;await wait(700,tk);$('#dg',el).textContent='';await wait(250,tk)}
+    const target=(mode==='f'?d:d.slice().reverse()).join('');
+    el.innerHTML=`<div class="stimbox"><div id="dg" class="bigword" style="letter-spacing:.1em"> </div></div><div class="msg">Type ${mode==='f'?'in order':'in reverse'}</div>
+      <div class="keypad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" data-k="${n}">${n}</button>`).join('')}<button class="key" data-k="x">⌫</button><button class="key" data-k="0">0</button><span></span></div>`;
+    let ans='';
+    await new Promise(res=>{
+      const kp=$('.keypad',el);
+      kp.addEventListener('pointerdown',e=>{
+        const b=e.target.closest('[data-k]');if(!b)return;
+        if(b.dataset.k==='x')ans=ans.slice(0,-1);else if(ans.length<len)ans+=b.dataset.k;
+        $('#dg',el).textContent=ans||' ';
+        if(ans.length===len)res();
+      });
+    });
+    const ok=ans===target;fb(ok);
+    $('.msg',el).innerHTML=ok?'<span style="color:var(--good)">Correct</span>':`<span style="color:var(--bad)">It was ${target}</span>`;
+    await wait(1100,tk);
+    if(ok){best=len;len++;fails=0;if(len>14)break}else{fails++;if(fails>=2)break}
+  }
+  gameResult(tk,{big:best,unit:`digits (${mode==='f'?'forward':'backward'})`,value:best,recId:'digits-'+mode,
+    lines:['Typical adults manage about 7 forward and 5 backward.','Two misses at the same length end the run.','Try chunking digits into groups of two or three.']});
+}
+
+/* --- Corsi blocks --- */
+async function gCorsi(el,tk){
+  await intro(el,`<h3>Corsi Blocks</h3><p>Blocks light up one by one. Tap them back in the same order. The sequence grows each time you get it right.</p>`);
+  const P=[[12,14],[42,8],[70,16],[22,42],[52,40],[76,48],[10,72],[40,76],[70,74]];
+  el.innerHTML=`<div class="msg" id="cm"> </div><div class="blocks" id="bl">${P.map((p,i)=>`<button class="blk" data-i="${i}" style="left:${p[0]}%;top:${p[1]}%" aria-label="Block ${i+1}"></button>`).join('')}</div>`;
+  const bl=$('#bl',el),blk=$$('.blk',el),msg=$('#cm',el);
+  let len=2,fails=0,best=0;
+  const lit=async(i,ms)=>{blk[i].classList.add('lit');await wait(ms,tk);blk[i].classList.remove('lit')};
+  while(true){
+    const seq=[];while(seq.length<len){const x=rnd(9);if(!seq.includes(x))seq.push(x)}
+    msg.textContent=`Watch · ${len} blocks`;
+    await wait(800,tk);
+    for(const i of seq){await lit(i,550);await wait(250,tk)}
+    msg.textContent='Your turn';
+    let ok=true;
+    for(let k=0;k<len;k++){
+      const b=await pick(bl,'.blk');const i=+b.dataset.i;
+      if(i!==seq[k]){ok=false;b.classList.add('bad');setTimeout(()=>b.classList.remove('bad'),400);break}
+      b.classList.add('lit');setTimeout(()=>b.classList.remove('lit'),150);
+    }
+    msg.innerHTML=ok?'<span style="color:var(--good)">Correct</span>':'<span style="color:var(--bad)">Not quite</span>';
+    await wait(1000,tk);
+    if(ok){best=len;len++;fails=0;if(len>9)break}else{fails++;if(fails>=2)break}
+  }
+  gameResult(tk,{big:best,unit:'blocks in sequence',value:best,
+    lines:['Typical adults manage about 5 to 6.','Two misses at the same length end the run.','Try tracing the sequence as a shape.']});
+}
+
+/* --- Go / No-Go --- */
+async function gGoNoGo(el,tk){
+  await intro(el,`<h3>Go / No-Go</h3><p>Tap the box when the circle is <b style="color:#22c55e">green</b>. Do <b>nothing</b> when it's <b style="color:#ef4444">red</b>. 40 trials.</p>`);
+  el.innerHTML=`<div class="gprog"><i id="gp"></i></div><div class="stimbox tapbox" id="tb"><div class="circle" id="ci" style="visibility:hidden"></div></div><div class="msg" id="gm">Tap the box for green</div>`;
+  const tb=$('#tb',el),ci=$('#ci',el);
+  const N=40,types=shuffle([...Array(30).fill(1),...Array(10).fill(0)]);
+  let hits=0,omit=0,comm=0,correctRej=0;const rts=[];
+  for(let t=0;t<N;t++){
+    $('#gp',el).style.width=(t/N*100)+'%';
+    ci.style.visibility='hidden';
+    await wait(500+rnd(500),tk);
+    const go=types[t]===1;
+    ci.style.background=go?'#22c55e':'#ef4444';ci.style.visibility='visible';
+    const rt=await new Promise((res,rej)=>{
+      let done=false;const t0=performance.now();
+      const h=()=>{if(done)return;done=true;clearTimeout(to);tb.removeEventListener('pointerdown',h);res(performance.now()-t0)};
+      const to=setTimeout(()=>{if(done)return;done=true;tb.removeEventListener('pointerdown',h);tk===token?res(null):rej(new Abort())},800);
+      tb.addEventListener('pointerdown',h);
+    });
+    ci.style.visibility='hidden';
+    if(go&&rt!=null){hits++;rts.push(rt);fb(true)}
+    else if(go){omit++;fb(false)}
+    else if(rt!=null){comm++;fb(false)}
+    else correctRej++;
+  }
+  const avg=Math.round(mean(rts));
+  gameResult(tk,{big:avg+' ms',unit:'average reaction time on green',value:(comm<=2&&omit<=3)?avg:null,note:'Score counts with 2 or fewer false taps and 3 or fewer misses.',
+    lines:[`Correct taps: ${hits} / 30`,`Missed greens: ${omit}`,`False taps on red: ${comm} / 10`,'Speed matters less than not tapping on red.']});
+}
+
+/* ---------- events ---------- */
+app.addEventListener('pointerdown',e=>{
+  const b=e.target.closest('.rbtn');
+  if(b&&run){e.preventDefault();press(+b.dataset.m)}
+});
+app.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act;
+  switch(a){
+    case 'n-':S.n=Math.max(1,S.n-1);saveNB();renderNbHome();break;
+    case 'n+':S.n=Math.min(9,S.n+1);saveNB();renderNbHome();break;
+    case 'mod':{const i=+b.dataset.i;const on=S.mods.filter(Boolean).length;
+      if(S.mods[i]&&on===1)break; S.mods[i]=S.mods[i]?0:1;saveNB();renderNbHome();break}
+    case 'start':startRun();break;
+    case 'quit':case 'home':renderNbHome();break;
+    case 'base':S.base=+b.dataset.v;saveNB();renderNbHome();break;
+    case 'snd':S.snd=b.dataset.v;saveNB();renderNbHome();break;
+    case 'auto':S.auto=!S.auto;saveNB();renderNbHome();break;
+    case 'fb':S.feedback=!S.feedback;saveNB();renderNbHome();break;
+    case 'play':startGame(b.dataset.g);break;
+    case 'gagain':startGame(curGame.id);break;
+    case 'gquit':renderTrain();break;
+  }
+});
+app.addEventListener('input',e=>{
+  if(e.target.id==='rng'){
+    S.interval=+e.target.value;saveNB();
+    $('#ivl').textContent=(S.interval/1000).toFixed(2).replace(/0$/,'')+'s';
+  }
+});
+function go(t){
+  tab=t;token++;abortRun();document.body.classList.remove('playing');
+  $$('.tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)));
+  t==='nback'?renderNbHome():renderTrain();
+}
+$$('.tabs button').forEach(b=>b.onclick=()=>go(b.dataset.tab));
+renderNbHome();
+
+/* ---------- PWA ---------- */
+(function(){
+  const HAS_SW=true;
+  function drawIcon(s){
+    const c=document.createElement('canvas');c.width=c.height=s;const x=c.getContext('2d');
+    x.fillStyle='#0b1020';x.fillRect(0,0,s,s);
+    const p=s*.18,g=s*.04,w=(s-2*p-2*g)/3;
+    for(let r=0;r<3;r++)for(let q=0;q<3;q++){
+      x.fillStyle=(r===0&&q===2)?'#22d3ee':(r===2&&q===0)?'#a78bfa':'#243061';
+      const rx=p+q*(w+g),ry=p+r*(w+g);x.beginPath();
+      if(x.roundRect)x.roundRect(rx,ry,w,w,w*.24);else x.rect(rx,ry,w,w);
+      x.fill();
+    }
+    return c.toDataURL('image/png');
+  }
+  try{
+    if(!document.querySelector('link[rel="manifest"]')){
+      const i192=drawIcon(192),i512=drawIcon(512);
+      const m={name:'QuadBack – N-Back & Brain Training',short_name:'QuadBack',description:'Quad n-back and brain training games',
+        start_url:location.href.split('#')[0],display:'standalone',orientation:'portrait',background_color:'#0b1020',theme_color:'#0b1020',
+        icons:[{src:i192,sizes:'192x192',type:'image/png',purpose:'any'},{src:i512,sizes:'512x512',type:'image/png',purpose:'any maskable'}]};
+      const l=document.createElement('link');l.rel='manifest';
+      l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));
+      document.head.appendChild(l);
+      const a=document.createElement('link');a.rel='apple-touch-icon';a.href=i192;document.head.appendChild(a);
+    }
+  }catch(e){}
+  if(HAS_SW&&'serviceWorker' in navigator&&location.protocol.indexOf('http')===0){
+    window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+  }
+  let dp=null;const ib=$('#installBtn');
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;ib.hidden=false});
+  ib.onclick=async()=>{if(!dp)return;dp.prompt();try{await dp.userChoice}catch(e){}dp=null;ib.hidden=true};
+  window.addEventListener('appinstalled',()=>{ib.hidden=true});
+})();
+</script>
+</body>
+</html>
